@@ -3,15 +3,24 @@ import pymysql.cursors
 import webbrowser
 import threading
 import os
+import sys
 
-app = Flask(__name__)
+if getattr(sys, 'frozen', False):
+    # Se estiver rodando no .exe criado pelo PyInstaller
+    base_path = sys._MEIPASS
+else:
+    # Rodando no script normal
+    base_path = os.path.abspath(".")
+
+template_dir = os.path.join(base_path, "templates")
+app = Flask(__name__, template_folder=template_dir)
 
 # Função para conectar ao banco de dados
 def get_db_connection():
     return pymysql.connect(
         host='localhost',
-        user='root',
-        password='',  # Altere se necessário
+        user='meu_app_user',
+        password='filmes@123',  # Altere se necessário
         database='movies',
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
