@@ -1,80 +1,85 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Filmes</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f9f9f9;
-            color: #333;
-        }
-        h1 {
-            color: #444;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: #fff;
-        }
-        th, td {
-            padding: 8px 12px;
-            border: 1px solid #ccc;
-            text-align: left;
-        }
-        th {
-            background-color: #eee;
-        }
-        a button {
-            margin-right: 10px;
-            padding: 6px 12px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        a button:hover {
-            background-color: #0056b3;
-        }
-    </style>
+    <title>Movie List</title>
+    <link rel="icon" href="ico.ico" type="image/x-icon">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
 </head>
 <body>
+    <h1>🎬 Movie List</h1>
 
-    <h1>Lista de Filmes</h1>
+    <form method="get" class="filters">
+        <input type="text" name="q" placeholder="Search by name..." value="{{ query }}">
+        
+        <select name="status">
+            <option value="">-- Status --</option>
+            <option value="Yes" {% if status == 'Yes' %}selected{% endif %}>Watched</option>
+            <option value="No" {% if status == 'No' %}selected{% endif %}>Not Watched</option>
+        </select>
 
-    <p>
-        Ordenar por:
-        <a href="/?sort=movie_id"><button>ID</button></a>
-        <a href="/?sort=name"><button>Nome</button></a>
-        <a href="/?sort=year"><button>Ano</button></a>
-    </p>
+        <select name="sort">
+            <option value="">-- Sort --</option>
+            <option value="asc" {% if sort == 'asc' %}selected{% endif %}>A-Z</option>
+            <option value="desc" {% if sort == 'desc' %}selected{% endif %}>Z-A</option>
+        </select>
 
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Data</th>
-                <th>Nome</th>
-                <th>Ano</th>
-                <th>Link</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for movie in movies %}
-                <tr>
-                    <td>{{ movie.movie_id }}</td>
-                    <td>{{ movie.date }}</td>
-                    <td>{{ movie.name }}</td>
-                    <td>{{ movie.year }}</td>
-                    <td><a href="{{ movie.uri }}" target="_blank">Abrir</a></td>
-                    <td>{{ movie.status }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        <button type="submit">🔍 Filter</button>
+        <button type="submit" name="random" value="1">🎲 Random Movie</button>
+    </form>
 
+    {% if random_movie %}
+        <div class="movie-item highlight">
+            <div>
+                <strong>Random Pick:</strong> {{ random_movie['Name'] }} ({{ random_movie['Year'] }})
+                <a href="{{ random_movie['Letterboxd URI'] }}" target="_blank" class="btn-link">🔗 View</a>
+                {% if random_movie['Watched'] == 'Yes' %}
+                    <span class="check">✓</span>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="movie-list">
+    {% for movie in movies %}
+        <div class="movie-item">
+            <label>
+                <input type="checkbox" class="watch-toggle"
+                       data-name="{{ movie['Name'] }}"
+                       {% if movie['Watched'] == 'Yes' %}checked{% endif %}>
+                {{ movie['Name'] }} ({{ movie['Year'] }})
+            </label>
+            <a href="{{ movie['Letterboxd URI'] }}" target="_blank" class="btn-link">🔗 View</a>
+        </div>
+    {% else %}
+        <p>No movies found.</p>
+    {% endfor %}
+    </div>
 </body>
 </html>
+
+<script>
+  document.querySelectorAll('.watch-toggle').forEach(checkbox => {
+    checkbox.addEventListener('change', function () {
+      const name = this.getAttribute('data-name');
+      const watched = this.checked ? 'Yes' : 'No';
+
+      fetch('/toggle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: name, watched: watched })
+      })
+      .then(response => {
+        if (!response.ok) {
+          alert('Failed to update movie status.');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+    });
+  });
+</script>

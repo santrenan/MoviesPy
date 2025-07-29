@@ -1,57 +1,130 @@
-from flask import Flask, render_template, request
-import pymysql.cursors
+import csv
+import random
 import webbrowser
-import threading
-import os
-import sys
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+from pathlib import Path
+from threading import Timer
 
-if getattr(sys, 'frozen', False):
-    # Se estiver rodando no .exe criado pelo PyInstaller
-    base_path = sys._MEIPASS
-else:
-    # Rodando no script normal
-    base_path = os.path.abspath(".")
 
-template_dir = os.path.join(base_path, "templates")
-app = Flask(__name__, template_folder=template_dir)
+app = Flask(__name__)
+BASE_DIR = Path(__file__).parent
+DATA_DIR = BASE_DIR / 'data'
 
-# Função para conectar ao banco de dados
-def get_db_connection():
-    return pymysql.connect(
-        host='localhost',
-        user='meu_app_user',
-        password='filmes@123',  # Altere se necessário
-        database='movies',
-        charset='utf8mb4',
-        cursorclass=pymysql.cursors.DictCursor
-    )
+NOT_WATCHED_MOVIES = DATA_DIR / 'list_movies.csv'
+WATCHED_MOVIES = DATA_DIR / 'watched.csv'
 
-# Rota principal com ordenação
-@app.route('/')
+
+def load_movies(path: Path):
+    with open(path, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        return list(reader)
+
+
+def write_movies(path: Path, data):
+    if not data:
+        return
+    with open(path, 'w', encoding='utf-8', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=data[0].keys())
+        writer.writeheader()
+        writer.writerows(data)
+
+
+@app.route('/', methods=['GET'])
 def index():
-    sort = request.args.get('sort', 'movie_id')  # Ordenação padrão
-    valid_sorts = ['movie_id', 'name', 'year']
+    query = request.args.get('q', '').lower()
+    status = request.args.get('status', '')
+    sort = request.args.get('sort', '')
 
-    # Segurança: evitar SQL injection
-    if sort not in valid_sorts:
-        sort = 'movie_id'
+    # Carrega as duas listas
+    not_watched = load_movies(NOT_WATCHED_MOVIES)
+    for movie in not_watched:
+        movie['Watched'] = 'No'
 
-    connection = get_db_connection()
-    with connection.cursor() as cursor:
-        cursor.execute(f"SELECT * FROM `movies_data` ORDER BY {sort}")
-        movies = cursor.fetchall()
-    connection.close()
+    watched = load_movies(WATCHED_MOVIES)
+    for movie in watched:
+        movie['Watched'] = 'Yes'
 
-    return render_template('index.html', movies=movies)
+    # Junta as listas
+    movies = not_watched + watched
 
-# Função para abrir o navegador automaticamente
+    # Filter by name
+    if query:
+        movies = [movie for movie in movies if query in movie['Name'].lower()]
+
+    # Filter by status
+    if status in ['Yes', 'No']:
+        movies = [movie for movie in movies if movie['Watched'] == status]
+
+    # Sort
+    if sort == 'asc':
+        movies.sort(key=lambda x: x['Name'].lower())
+    elif sort == 'desc':
+        movies.sort(key=lambda x: x['Name'].lower(), reverse=True)
+
+    random_movie = random.choice(movies) if movies else None
+
+    return render_template(
+        'index.html',
+        movies=movies,
+        random_movie=random_movie,
+        query=query,
+        status=status,
+        sort=sort)
+
+
+@app.route('/mark_as_watched/<name>')
+def mark_as_watched(name: str):
+    # Load lists
+    not_watched = load_movies(NOT_WATCHED_MOVIES)
+    watched = load_movies(WATCHED_MOVIES)
+
+    # Procura o filme na lista de não assistidos
+    for i, movie in enumerate(not_watched):
+        if movie['Name'].lower() == name.lower():
+            watched.append(movie)
+            del not_watched[i]
+            break
+
+    write_movies(NOT_WATCHED_MOVIES, not_watched)
+    write_movies(WATCHED_MOVIES, watched)
+
+    return redirect(url_for('index'))
+
+
+@app.route('/toggle', methods=['POST'])
+def toggle_watched():
+    data = request.get_json()
+    name = data.get('name')
+    watched_status = data.get('watched') == 'Yes'
+
+    not_watched = load_movies(NOT_WATCHED_MOVIES)
+    watched = load_movies(WATCHED_MOVIES)
+
+    if watched_status:
+        # Move de não assistido → assistido
+        for i, movie in enumerate(not_watched):
+            if movie['Name'].lower() == name.lower():
+                watched.append(movie)
+                del not_watched[i]
+                break
+    else:
+        # Move de assistido → não assistido
+        for i, movie in enumerate(watched):
+            if movie['Name'].lower() == name.lower():
+                not_watched.append(movie)
+                del watched[i]
+                break
+
+    write_movies(NOT_WATCHED_MOVIES, not_watched)
+    write_movies(WATCHED_MOVIES, watched)
+
+    return jsonify(success=True)
+
+
 def open_browser():
-    webbrowser.open_new('http://127.0.0.1:3010/')
+    webbrowser.open_new("http://127.0.0.1:5000")
 
-# Inicialização do app
-if __name__ == '__main__':
-    # Garante que o navegador só abrirá no processo principal do Flask
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-        threading.Timer(1.5, open_browser).start()
 
-    app.run(debug=True, port=3010)
+if __name__ == "__main__":
+    Timer(1, open_browser).start()
+    app.run(debug=False, use_reloader=False)
