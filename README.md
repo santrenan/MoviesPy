@@ -28,13 +28,15 @@ MoviesPy é uma aplicação web simples e prática, desenvolvida em **Python** c
 ``` MoviesPy/
 ├── data/
 │   ├── list_movies.csv   # Filmes não assistidos
-│   └── watched.csv       # Filmes assistidos
+│   ├── watched.csv       # Filmes assistidos
+│   └── letterboxd.csv    # Export original do Letterboxd
 │
 ├── static/               # Arquivos CSS, imagens e ícones
 ├── templates/            # Páginas HTML
 ├── app.py                # Código principal da aplicação Flask
 ├── requirements.txt
-└── README.md
+├── README.md 
+└── start_app.vbs         # Script para iniciar no Windows
 ``` 
 ---
 
