@@ -101,14 +101,14 @@ def toggle_watched():
     watched = load_movies(WATCHED_MOVIES)
 
     if watched_status:
-        # Move de não assistido → assistido
+        # Move de não assistido para assistido
         for i, movie in enumerate(not_watched):
             if movie['Name'].lower() == name.lower():
                 watched.append(movie)
                 del not_watched[i]
                 break
     else:
-        # Move de assistido → não assistido
+        # Move de assistido para não assistido
         for i, movie in enumerate(watched):
             if movie['Name'].lower() == name.lower():
                 not_watched.append(movie)
@@ -122,9 +122,9 @@ def toggle_watched():
 
 
 def open_browser():
-    webbrowser.open_new("http://127.0.0.1:5000")
+    webbrowser.open_new("http://127.0.0.1:5001")
 
 
 if __name__ == "__main__":
-    Timer(1, open_browser).start()
-    app.run(debug=False, use_reloader=False)
+    Timer(0.1, open_browser).start()
+    app.run(debug=False, use_reloader=False, port=5001)
