@@ -35,7 +35,7 @@ def index():
     status = request.args.get('status', '')
     sort = request.args.get('sort', '')
 
-    # Carrega as duas listas
+    # Load lists
     not_watched = load_movies(NOT_WATCHED_MOVIES)
     for movie in not_watched:
         movie['Watched'] = 'No'
@@ -44,7 +44,6 @@ def index():
     for movie in watched:
         movie['Watched'] = 'Yes'
 
-    # Junta as listas
     movies = not_watched + watched
 
     # Filter by name
@@ -78,7 +77,7 @@ def mark_as_watched(name: str):
     not_watched = load_movies(NOT_WATCHED_MOVIES)
     watched = load_movies(WATCHED_MOVIES)
 
-    # Procura o filme na lista de não assistidos
+    # Search movies not watched
     for i, movie in enumerate(not_watched):
         if movie['Name'].lower() == name.lower():
             watched.append(movie)
@@ -101,14 +100,14 @@ def toggle_watched():
     watched = load_movies(WATCHED_MOVIES)
 
     if watched_status:
-        # Move de não assistido para assistido
+        # Move from unwatched to watched movie
         for i, movie in enumerate(not_watched):
             if movie['Name'].lower() == name.lower():
                 watched.append(movie)
                 del not_watched[i]
                 break
     else:
-        # Move de assistido para não assistido
+        # Move from watched to unwatched movie
         for i, movie in enumerate(watched):
             if movie['Name'].lower() == name.lower():
                 not_watched.append(movie)
